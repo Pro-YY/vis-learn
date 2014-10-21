@@ -1,0 +1,220 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>Timeline | Order groups</title>
+
+  <style>
+    body, html {
+      font-family: arial, sans-serif;
+      font-size: 11pt;
+    }
+
+    #visualization {
+      box-sizing: border-box;
+      width: 100%;
+      height: 300px;
+    }
+
+    .vis.timeline .item {
+      /*border-color: #F991A3;*/
+      /*background-color: pink;*/
+      font-size: 1pt;
+      /*color: purple;*/
+      /*box-shadow: 5px 5px 20px rgba(128,128,128, 0.5);*/
+      /*padding: 10px;*/
+    }
+
+    .vis.timeline .item.box {
+      border-radius: 0;
+      border-width: 1px;
+      font-size: 24pt;
+      font-weight: bold;
+      /*opacity: 0;*/
+    }
+
+    .vis.timeline .item.orange {
+      background-color: orange;
+      border-color: darkorange;
+    }
+
+    .vis.timeline .item.green {
+      background-color: greenyellow;
+      border-color: darkgreenyellow;
+    }
+
+    .vis.timeline .item.gray {
+      background-color: Gainsboro;
+      border-color: Gainsoro;
+      /*background-color: gray;*/
+      /*border-color: darkgray;*/
+    }
+
+  </style>
+
+  <script src="dist/vis.min.js"></script>
+  <link href="dist/vis.min.css" rel="stylesheet" type="text/css" />
+</head>
+<body>
+  <p>
+    This example demonstrate custom ordering of groups.
+  </p>
+  <div id="visualization"></div>
+
+  <script src="data.js"></script>
+
+  <script>
+
+
+    var genTime = function (timeStr) {
+    // "19:14:52.759"
+    if (!timeStr) return null;
+    var today = new Date();
+    var timePattern = new RegExp('^(\\d+):(\\d+):(\\d+)\\.(\\d+)$');
+    var t = timeStr.match(timePattern).splice(1, 5);
+    return today.setHours(+t[0], +t[1], +t[2], +t[3]);
+  };
+  var parseOutputData = function(output) {
+    var data = [];
+    var count = 0;
+    for (var activity in output) {
+      for (var instanceIndex = 0; instanceIndex < output[activity].length; instanceIndex++) {
+        var instance = output[activity][instanceIndex];
+        var createTime = genTime(instance['lifetime']['am_create_activity']);
+        var launchTime = genTime(instance['lifetime']['am_activity_launch_time']);
+        var destroyTime = genTime(instance['lifetime']['am_destroy_activity']);
+        // create
+
+        console.log(activity, 'create', createTime);
+        if (!createTime) continue;
+        data.push(
+          // {id: activity + '_' + createTime,
+          {id: count++,
+          group: activity,
+          content: '',
+          start: createTime,
+          end: launchTime,
+          className: 'orange'});
+
+        // first visit
+        var firstPause;
+        if (instance['visifirst']) {
+          firstPause = genTime(instance['visifirst']['am_pause_activity']);
+
+          console.log(activity, 'launch', launchTime);
+          if (!launchTime) continue;
+          data.push(
+            // {id: activity + '_' + launchTime,
+            {id: count++,
+            group: activity,
+            content: '',
+            start: launchTime,
+            end: firstPause,
+            className: 'green'});
+        }
+        // last destroy
+        if (instance['visitime'].length === 0) {
+
+          console.log(activity, 'first pause', firstPause);
+          if (!firstPause) continue;
+          data.push(
+            {id: count++,
+            // {id: activity + '_' + firstPause,
+            group: activity,
+            content: '',
+            start: firstPause,
+            end: destroyTime,
+            className: 'gray'});
+          continue;
+        }
+        // several resume-pause span
+        var lastPause = firstPause;
+        for (var spanIndex = 0, lastEnd = firstPause; spanIndex < instance['visitime'].length; spanIndex++) {
+          var span = instance['visitime'][spanIndex];
+          var start = genTime(span['am_resume_activity']);
+          var end = genTime(span['am_pause_activity']);
+
+          // 'off' period
+          console.log(activity, 'pause', lastEnd);
+          if (!lastEnd) break;
+          data.push(
+            {id: count++,
+            // {id: activity + '_' + lastEnd,
+            group: activity,
+            content: '',
+            start: lastEnd,
+            end: start,
+            className: 'gray'});
+
+          // 'on' period
+          console.log(activity, 'resume', start);
+          if (!start) break;
+          data.push(
+            {id: count++,
+            // {id: activity + '_' + start,
+            group: activity,
+            content: '',
+            start: start,
+            end: end,
+            className: 'green'});
+          lastEnd = end;
+          lastPause = end;
+        }
+        // last 'off'
+        if (!lastPause) continue;
+        data.push(
+          {id: count++,
+          // {id: activity + '_' + lastPause,
+          group: activity,
+          content: '',
+          start: lastPause,
+          end: destroyTime,
+          className: 'gray'});
+      }
+    };
+    return data;
+  };
+
+  var parseOutputGroup = function(output) {
+    var groups = [];
+    var value = 0;
+    for (var activity in output) {
+      groups.push({
+        id: activity,
+        content: activity,
+        value: value,
+      });
+      value++;
+    }
+    return groups;
+  }
+
+var groups = parseOutputGroup(OUTPUT);
+var data = parseOutputData(OUTPUT);
+
+  var items = new vis.DataSet(data);
+
+  items.on('update', function (event, properties) {
+    console.log(event, JSON.stringify(properties));
+    console.log('update: ' + items._data[properties['items']].desc);
+    alert(items._data[properties['items']].desc);
+  });
+
+  // create visualization
+  var container = document.getElementById('visualization');
+  var options = {
+    groupOrder: function (a, b) {
+      return a.value - b.value;
+    },
+    stack: false,
+    // padding: 10,
+  };
+
+  var timeline = new vis.Timeline(container);
+  timeline.setOptions(options);
+  timeline.setGroups(groups);
+  timeline.setItems(items);
+
+</script>
+</body>
+</html>
