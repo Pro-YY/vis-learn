@@ -70,17 +70,31 @@ $(function () {
       start: START,
       end: END,
       stack: false,
-      editable: true,
+      editable: {
+        add: false,
+        updateTime: false,
+        updateGroup: false,
+        remove: false,
+      },
+      /*
       onUpdate: function (item, callback) {
         alert(item.desc);
         callback(null);
       },
+      */
     };
     var timeline = new vis.Timeline(container, items, options, groups, options);
 
     timeline.on('rangechanged', function (properties) {
       START = properties.start;
       END = properties.end;
+    });
+    timeline.on('select', function (properties) {
+      data.forEach(function(v) {
+        if(v['id'] === properties.items[0]) {
+          alert(v['desc']);
+        }
+      });
     });
   }
 
