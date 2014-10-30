@@ -1,0 +1,237 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <title>Timeline | Order groups</title>
+    <script src="jquery-2.1.1.min.js"></script>
+    <script src="dist/vis.min.js"></script>
+    <link href="dist/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+      .vis.timeline .item.background.green {
+        /*background-color: rgba(255, 0, 0, 0.2);*/
+        background-color: lightgreen;
+      }
+      .vis.timeline .item.background.red {
+        /*background-color: rgba(105, 255, 98, 0.20);*/
+        background-color: red;
+      }
+      .vis.timeline .item.background.gray {
+        background-color: lightgray;
+      }
+
+      .vis.timeline .item.orange {
+        background-color: orange;
+      }
+      .vis.timeline .item.greenyellow {
+        background-color: greenyellow;
+      }
+      .vis.timeline .item.green {
+        background-color: green;
+      }
+    </style>
+  </head>
+
+  <body>
+    <button id="btnToggle">Points Toggle</button>
+    <div id="visualization"></div>
+
+
+<script type="text/javascript">
+
+$(function () {
+
+  var result = null;
+  var showPoint = false;
+  var loadActivitiesResult = function(path) {
+    $.ajax({
+      url: path,
+      success: function (data) {
+        result = data;
+        drawActivitiesResultTimeline(result, showPoint);
+      },
+      error: function (err) {
+        console.log('Error', err);
+      }
+    });
+  }
+
+  var drawTimeline = function(containerId, data, dataGroup) {
+    $('#' + containerId).empty();
+
+    var container = $('#' + containerId)[0];
+    var items = new vis.DataSet(data);
+    var groups = new vis.DataSet(dataGroup);
+
+    var options = {
+      type: 'point',
+      stack: false,
+    };
+    var timeline = new vis.Timeline(container, items, options, groups, options);
+  }
+
+
+  $('#btnToggle').click(function (){
+    showPoint = ~showPoint;
+    drawActivitiesResultTimeline(result, showPoint);
+  });
+
+
+  var drawActivitiesResultTimeline = function(result, point) {
+    if (!result) {
+      alert('No result yet!');
+      return;
+    }
+
+    var data = [];
+    var groups = [];
+
+    var genTime = function (timeStr) {
+      // "19:14:52.759"
+      if (!timeStr) return null;
+      var today = new Date();
+      var timePattern = new RegExp('^(\\d+):(\\d+):(\\d+)\\.(\\d+)$');
+      var t = timeStr.match(timePattern).splice(1, 5);
+      return today.setHours(+t[0], +t[1], +t[2], +t[3]);
+    };
+
+    var parseInstancePoints = function(instance, index, groupId, data) {
+      // parse activity instance, add to data
+      // add 'lifetime' events
+      for (var eventName in instance['lifetime']) {
+        var startTime = genTime(instance['lifetime'][eventName]);
+        if (startTime === null) continue;
+        var item = {id: 'point_' + groupId + '_' + index + '_' + eventName,
+          // content: '[' + index + '] ' + eventName,
+          content: '',
+          group: groupId,
+          type: 'point',
+          // type: 'box',
+          // className: 'orange',
+          start: startTime
+        };
+        data.push(item);
+      }
+    };
+
+    var parseInstancePeriods = function(instance, index, groupId, data) {
+      var lastEndTime = null;
+
+      // create -> launch
+      if (instance['lifetime'] &&
+          instance['lifetime']['am_create_activity'] &&
+          instance['lifetime']['am_activity_launch_time']) {
+        // fg
+        startTime = genTime(instance['lifetime']['am_create_activity']);
+        endTime = genTime(instance['lifetime']['am_activity_launch_time']);
+        var item = {id: 'period_' + groupId + '_' + index + '_' + 'launch',
+          content: '',
+          group: groupId,
+          start: startTime,
+          end: endTime,
+          type: 'background',
+          className: 'orange'
+        }
+        data.push(item);
+      }
+      // first visit, lauch -> pause
+      if (instance['visifirst'] &&
+          instance['visifirst']['am_activity_launch_time'] &&
+          instance['visifirst']['am_pause_activity']) {
+        // fg
+        startTime = genTime(instance['visifirst']['am_activity_launch_time']);
+        endTime = genTime(instance['visifirst']['am_pause_activity']);
+        var item = {id: 'period_' + groupId + '_' + index + '_' + 'first',
+          // content: 'period_' + groupId + '_' + index + '_' + 'first',
+          content: '',
+          group: groupId,
+          start: startTime,
+          end: endTime,
+          type: 'background',
+          className: 'green'
+        }
+        data.push(item);
+        lastEndTime = endTime;
+      }
+      // latar visits
+      if (instance['visitime'].length > 0) {
+        instance['visitime'].forEach(function (v, i) {
+          var startTime = null;
+          var endTime = null;
+          if (lastEndTime) {
+            startTime = genTime(v['am_resume_activity']);
+            // bg
+            var item = {id: 'period_' + groupId + '_' + index + '_' + 'pause_' + String(i),
+              // content: 'period_' + groupId + '_' + index + '_' + 'pause_' + String(i),
+              content: '',
+              group: groupId,
+              start: lastEndTime,
+              end: startTime,
+              type: 'background',
+              className: 'gray'
+            }
+            data.push(item);
+          }
+          // fg
+          startTime = genTime(v['am_resume_activity']);
+          endTime = genTime(v['am_pause_activity']);
+          // console.log(v['am_pause_activity']);
+          var item = {id: 'period_' + groupId + '_' + index + '_' + 'resume_' + String(i),
+            // content: 'period_' + groupId + '_' + index + '_' + 'resume_' + String(i),
+            content: '',
+            group: groupId,
+            start: startTime,
+            end: endTime,
+            type: 'background',
+            className: 'greenyellow'
+          }
+          data.push(item);
+          lastEndTime = endTime;
+        });
+      }
+      // destroy
+      if (lastEndTime &&
+          instance['lifetime'] &&
+          instance['lifetime']['am_destroy_activity']) {
+        // bg
+        endTime = genTime(instance['lifetime']['am_destroy_activity']);
+        var item = {id: 'period_' + groupId + '_' + index + '_' + 'destroy',
+          content: '',
+          group: groupId,
+          start: lastEndTime,
+          end: endTime,
+          type: 'background',
+          className: 'gray'
+        }
+        data.push(item);
+      }
+    };
+
+    for (var packageName in result) {
+      for (var activityName in  result[packageName]) {
+        // add groups
+        var groupId = packageName + '_' + activityName;
+        groups.push({id: groupId,
+          // content: '[' + packageName + '] ' + activityName}
+          content: activityName}
+        );
+        var instanceList = result[packageName][activityName];
+        instanceList.forEach(function (instance, index) {
+          // add points
+          if (point) {
+            parseInstancePoints(instance, index, groupId, data);
+          }
+          // add periods
+          parseInstancePeriods(instance, index, groupId, data);
+        });
+      }
+    }
+
+    drawTimeline('visualization', data, groups);
+  };
+
+  loadActivitiesResult('activities.json');
+});
+
+</script>
+
+  </body>
+</html>
