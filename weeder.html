@@ -221,14 +221,19 @@ $(function () {
       }
     };
 
+    var firstPackageName = false;
     for (var packageName in result) {
+      firstPackageName = true;
       for (var activityName in  result[packageName]) {
         // add groups
         var groupId = packageName + '_' + activityName;
         groups.push({id: groupId,
-          content: '<b>[' + packageName + ']</b>' + activityName}
-          // content: activityName}
-        );
+          content: firstPackageName ?
+              ('<b>' + '[ ' + packageName + ' ]</b>' + activityName) :
+              ('[ ' + packageName + ' ]' + activityName)
+        });
+        firstPackageName = false;
+
         var instanceList = result[packageName][activityName];
         instanceList.forEach(function (instance, index) {
           // add points
