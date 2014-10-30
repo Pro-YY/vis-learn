@@ -31,6 +31,7 @@
   </head>
 
   <body>
+    <hr>
     <button id="btnToggle">Points Toggle</button>
     <div id="visualization"></div>
 
@@ -225,8 +226,8 @@ $(function () {
         // add groups
         var groupId = packageName + '_' + activityName;
         groups.push({id: groupId,
-          // content: '[' + packageName + '] ' + activityName}
-          content: activityName}
+          content: '<b>[' + packageName + ']</b>' + activityName}
+          // content: activityName}
         );
         var instanceList = result[packageName][activityName];
         instanceList.forEach(function (instance, index) {
