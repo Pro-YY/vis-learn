@@ -39,14 +39,17 @@
 
 $(function () {
 
-  var result = null;
-  var showPoint = false;
+  var RESULT = null;
+  var SHOW_POINT = false;
+  var START = null;
+  var END = null;
+
   var loadActivitiesResult = function(path) {
     $.ajax({
       url: path,
       success: function (data) {
-        result = data;
-        drawActivitiesResultTimeline(result, showPoint);
+        RESULT = data;
+        drawActivitiesResultTimeline(RESULT, SHOW_POINT);
       },
       error: function (err) {
         console.log('Error', err);
@@ -63,15 +66,27 @@ $(function () {
 
     var options = {
       type: 'point',
+      start: START,
+      end: END,
       stack: false,
+      editable: true,
+      onUpdate: function (item, callback) {
+        alert(item.desc);
+        callback(null);
+      },
     };
     var timeline = new vis.Timeline(container, items, options, groups, options);
+
+    timeline.on('rangechanged', function (properties) {
+      START = properties.start;
+      END = properties.end;
+    });
   }
 
 
   $('#btnToggle').click(function (){
-    showPoint = ~showPoint;
-    drawActivitiesResultTimeline(result, showPoint);
+    SHOW_POINT = ~SHOW_POINT;
+    drawActivitiesResultTimeline(RESULT, SHOW_POINT);
   });
 
 
@@ -100,11 +115,11 @@ $(function () {
         var startTime = genTime(instance['lifetime'][eventName]);
         if (startTime === null) continue;
         var item = {id: 'point_' + groupId + '_' + index + '_' + eventName,
-          // content: '[' + index + '] ' + eventName,
           content: '',
+          desc: groupId + '\n' + eventName + '\n' + new Date(startTime),
           group: groupId,
-          type: 'point',
-          // type: 'box',
+          // type: 'point',
+          type: 'box',
           // className: 'orange',
           start: startTime
         };
