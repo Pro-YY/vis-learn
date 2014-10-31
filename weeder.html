@@ -27,6 +27,37 @@
       .vis.timeline .item.green {
         background-color: green;
       }
+
+      /*
+      .vis.timeline .timeaxis .text {
+        color: purple;
+        padding-top: 10px;
+        padding-left: 10px;
+        opacity: 0;
+      }
+      .vis.timeline .timeaxis .text.major {
+        font-weight: bold;
+        opacity: 0;
+      }
+      .vis.timeline.root {
+        border: 2px solid purple;
+        font-family:  purisa, 'comic sans', cursive;
+        font-size: 12pt;
+        background: #ffecea;
+        opacity: 100;
+      }
+      */
+
+      .vis.timeline .timeaxis .grid.minor {
+        border-width: 2px;
+        border-color: pink;
+        opacity: 0;
+      }
+      .vis.timeline .timeaxis .grid.major {
+        border-width: 2px;
+        border-color: #F991A3;
+        opacity: 0;
+      }
     </style>
   </head>
 
@@ -243,18 +274,14 @@ $(function () {
       }
     };
 
-    var firstPackageName = false;
     for (var packageName in result) {
-      firstPackageName = true;
+      groups.push({id: packageName, content: '<b>' + packageName + '</b>'});
       for (var activityName in  result[packageName]) {
         // add groups
         var groupId = packageName + '_' + activityName;
         groups.push({id: groupId,
-          content: firstPackageName ?
-              ('<b>' + '[ ' + packageName + ' ]</b>' + activityName) :
-              ('[ ' + packageName + ' ]' + activityName)
+          content: activityName
         });
-        firstPackageName = false;
 
         var instanceList = result[packageName][activityName];
         instanceList.forEach(function (instance, index) {
