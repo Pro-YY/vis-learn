@@ -275,7 +275,7 @@ $(function () {
     };
 
     for (var packageName in result) {
-      groups.push({id: packageName, content: '<b>' + packageName + '</b>'});
+      groups.push({id: packageName, content: '<h3>' + packageName + '</h3>'});
       for (var activityName in  result[packageName]) {
         // add groups
         var groupId = packageName + '_' + activityName;
